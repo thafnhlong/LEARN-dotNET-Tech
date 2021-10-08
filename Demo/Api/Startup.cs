@@ -1,3 +1,5 @@
+using Api.Controllers;
+using Domain.Common;
 using Domain.Entities.Roles;
 using Domain.Entities.Users;
 using Domain.Exceptions;
@@ -94,11 +96,18 @@ namespace Api
         public void ConfigureServices(IServiceCollection services)
         {
             // DB
-            services.AddDbContext<DemoContext>(opt => opt.UseSqlite("Data source=demo.db", b => b.MigrationsAssembly("Api")));
+            var connectionString = "Data source=demo.db";
+            services.AddDbContext<DemoContext>(opt => opt.UseSqlite(connectionString, b => b.MigrationsAssembly("Api")));
+            services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>(opt => {
+                return new SqlConnectionFactory(connectionString);
+            });
 
             services.AddScoped<DemoContext>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
+
+            services.AddScoped<IUserService, UserService>();
+
 
             services.AddControllers(options => {
                 options.Filters.Add(typeof(HttpGlobalExceptionFilter));

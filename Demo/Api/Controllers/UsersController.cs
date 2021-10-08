@@ -1,18 +1,27 @@
-﻿using Domain.Entities.Users;
+﻿using Dapper;
+using Domain.Common;
+using Domain.Entities.Users;
 using Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
 namespace Api.Controllers
 {
+    public interface IUserService
+    {
+        Task<User> GetByIdAsync(int id);
+    }
+
     [Route("v1/users")]
     public class UsersController : ControllerBase
     {
         private IUserRepository _userRepository;
+        private IUserService _userService;
 
-        public UsersController(IUserRepository userRepository)
+        public UsersController(IUserRepository userRepository, IUserService userService)
         {
             _userRepository = userRepository;
+            _userService = userService;
         }
 
         [HttpPost]
@@ -59,7 +68,7 @@ namespace Api.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetUsers([FromRoute] int id)
         {
-            var user = await _userRepository.GetByIdAsync(id);
+            var user = await _userService.GetByIdAsync(id);
             if (user == null) {
                 throw new NotFoundRuleException("not_found", "not_found");
             }
@@ -71,6 +80,26 @@ namespace Api.Controllers
         {
             public string password { get; set; }
             public string username { get; set; }
+        }
+    }
+
+    public class UserService : IUserService
+    {
+        private readonly ISqlConnectionFactory _factory;
+
+        public UserService(ISqlConnectionFactory factory)
+        {
+            _factory = factory;
+        }
+
+        public async Task<User> GetByIdAsync(int id)
+        {
+            const string commandText = "select * from Users where id = @id";
+
+            using var conn = _factory.GetOpenConnection();
+            return await conn.QueryFirstOrDefaultAsync<User>(commandText, new {
+                id
+            });
         }
     }
 }
